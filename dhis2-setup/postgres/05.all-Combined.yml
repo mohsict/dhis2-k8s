@@ -1,0 +1,94 @@
+---
+apiVersion: v1
+kind: PersistentVolume # Create PV 
+metadata:
+  name: postgres-pv # Sets PV name
+  labels:
+    type: local # Sets PV's type
+    app: postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 20Gi # Sets PV's size
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/data/postgresql" # Sets PV's host path
+
+# Creating volumes Claim
+---
+apiVersion: v1
+kind: PersistentVolumeClaim # Create PVC
+metadata:
+  name: postgres-pvc # Sets PVC's name
+  labels:
+    app: postgres # Defines app to create PVC for
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi # Sets PVC's size
+
+# Create ConfigMap for the postgres app
+# Define default database name, user, and password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-secret
+  labels:
+    app: postgres
+data:
+  POSTGRES_DB: dhis    
+  POSTGRES_USER: dhis
+  POSTGRES_PASSWORD: dhis
+    
+# Deploy postgres
+--- 
+apiVersion: apps/v1
+kind: Deployment 
+metadata:
+  name: postgres 
+spec:
+  replicas: 1  
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: ghcr.io/baosystems/postgis:12-3.3 
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-secret
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgresdata
+      volumes:
+        - name: postgresdata
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+
+---              
+apiVersion: v1
+kind: Service 
+metadata:
+  name: postgres 
+  labels:
+    app: postgres 
+spec:
+  # type: NodePort
+  ports:
+    - port: 5432 # Sets the port to run the postgres application
+      # nodePort: 32432
+  selector:
+    app: postgres

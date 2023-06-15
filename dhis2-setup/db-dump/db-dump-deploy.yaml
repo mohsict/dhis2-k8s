@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: pod
+metadata:
+  name: db-dump
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-dump
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: db-dump
+    spec:
+      containers:
+        - name: db-dump
+          args:
+            - sh
+            - -c
+            - '[ -f dump.sql.gz ] && echo "dump.sql.gz exists" || wget --output-document dump.sql.gz $(DHIS2_DB_DUMP_URL)'
+          env:
+            - name: DHIS2_DB_DUMP_URL
+              value: https://databases.dhis2.org/sierra-leone/dev/dhis2-db-sierra-leone.sql.gz
+          image: busybox
+          resources: {}
+          volumeMounts:
+            - mountPath: /opt/dump
+              name: pg-data
+          workingDir: /opt/dump
+      restartPolicy: Always
+      volumes:
+        - name:  pg-data
+          persistentVolumeClaim:
+            claimName: pg-data
+status: {}

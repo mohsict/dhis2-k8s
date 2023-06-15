@@ -1,0 +1,10 @@
+---
+- name: "Import initial.yaml"
+  ansible.builtin.import_playbook: kube-dependencies.yml
+
+- name: "control-plane.yml"
+  ansible.builtin.import_playbook: master.yml
+
+- name: "workers.yml"
+  ansible.builtin.import_playbook: workers.yml
+
